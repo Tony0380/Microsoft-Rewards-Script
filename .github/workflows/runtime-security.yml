@@ -1,0 +1,16 @@
+name: Runtime security
+on:
+    push:
+    pull_request:
+    workflow_dispatch:
+permissions:
+    contents: read
+jobs:
+    runtime-security:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: '24.22.1'
+            - run: node --test security/runtime-security.test.cjs

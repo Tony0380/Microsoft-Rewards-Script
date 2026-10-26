@@ -1,13 +1,15 @@
 ###############################################################################
 # Stage 1: Builder
 ###############################################################################
-FROM node:24-slim AS builder
+FROM node:24.22.1-bookworm-slim AS builder
 
 WORKDIR /usr/src/microsoft-rewards-script
 
 ENV PLAYWRIGHT_BROWSERS_PATH=0
 
 # Copy package files
+COPY security ./security
+RUN node security/runtime-security.cjs --regression
 COPY package.json package-lock.json tsconfig.json ./
 
 # Install all dependencies required to build the script
@@ -25,16 +27,18 @@ RUN rm -rf node_modules \
 ###############################################################################
 # Stage 2: Runtime
 ###############################################################################
-FROM node:24-slim AS runtime
+FROM node:24.22.1-bookworm-slim AS runtime
 
 WORKDIR /usr/src/microsoft-rewards-script
+
+COPY security ./security
 
 # Set production environment variables
 ENV NODE_ENV=production \
     TZ=UTC \
     PLAYWRIGHT_BROWSERS_PATH=0 \
     FORCE_HEADLESS=1 \
-    NODE_OPTIONS=--disable-warning=ExperimentalWarning
+    NODE_OPTIONS="--disable-warning=ExperimentalWarning --require=/usr/src/microsoft-rewards-script/security/runtime-security.cjs"
 
 # Install minimal system libraries required for Chromium headless to run,
 # plus jq (for config generation/patching) and gettext-base (for envsubst)
@@ -88,6 +92,9 @@ COPY --from=builder /usr/src/microsoft-rewards-script/node_modules ./node_module
 RUN set -eux; \
     npx patchright install --with-deps --only-shell chromium; \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+RUN apt-get update && apt-get install -y --no-install-recommends libbrotli1 \
+    && sh security/check-runtime.sh && rm -rf /var/lib/apt/lists/*
 
 # Copy config example into the image so entrypoint can use it as a fallback
 # when the user hasn't mounted their own config.json
