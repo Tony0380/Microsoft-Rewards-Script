@@ -1,0 +1,35 @@
+name: Verified runtime image
+on:
+    push:
+        branches: [v4]
+        paths: [Dockerfile, 'security/**', '.github/workflows/security-image.yml']
+    pull_request:
+        paths: [Dockerfile, 'security/**', '.github/workflows/security-image.yml']
+    workflow_dispatch:
+permissions:
+    contents: read
+    packages: write
+jobs:
+    image:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+            - name: Build and test final image
+              run: |
+                  docker build --pull -t runtime-candidate .
+                  bash security/check-image.sh runtime-candidate
+            - uses: docker/login-action@v4
+              if: github.event_name != 'pull_request'
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+            - name: Publish immutable commit tag
+              if: github.event_name != 'pull_request'
+              env:
+                  REPOSITORY: ${{ github.repository }}
+                  REVISION: ${{ github.sha }}
+              run: |
+                  image="ghcr.io/${REPOSITORY,,}:$REVISION"
+                  docker tag runtime-candidate "$image"
+                  docker push "$image"

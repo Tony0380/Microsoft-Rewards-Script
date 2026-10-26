@@ -1,3 +1,4 @@
+import '../security/runtime-security.cjs'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import cluster, { Worker } from 'cluster'
 import type { BrowserContext, Cookie, Page } from 'patchright'

@@ -25,6 +25,11 @@ export default tseslint.config(
             'preserve-caught-error': 'off'
         }
     },
+    {
+        files: ['security/*.cjs'],
+        languageOptions: { sourceType: 'commonjs' },
+        rules: { '@typescript-eslint/no-require-imports': 'off' }
+    },
     // Must come last: disables ESLint rules that conflict with Prettier formatting
     prettier
 )
